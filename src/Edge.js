@@ -18,7 +18,8 @@ const Edge = (props) => {
             width: distance + "px",
             left: left,
             top: top,
-            transform: `rotate(${angle}deg)`
+            transform: `rotate(${angle}deg)`,
+            backgroundColor: props.color
         }} />
     
 
