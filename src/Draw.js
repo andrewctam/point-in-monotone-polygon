@@ -1,13 +1,16 @@
 import Point from './Point';
 import Edge from './Edge';
 import { useState } from "react";
-import { countDiagonals } from './triangulate';
+import { process, pointInsidePolygon } from './inside';
 
 function Draw() {
     const [points, setPoints] = useState([]);
     const [currentPoint, setCurrentPoint] = useState(null);
 
     const [building, setBuilding] = useState(true);
+    const [sorted, setSorted] = useState([]);
+
+    const [steps, setSteps] = useState([]);
 
     const createPoint = (e) => {
         const x = e.nativeEvent.offsetX - 8
@@ -15,13 +18,16 @@ function Draw() {
         console.log(x + " " + y)
 
         if (building)
-            setPoints([...points, {x: x, y: y}]);
-        else
+            setPoints([...points, {x: x, y: y, index: points.length}]);
+        else {
             setCurrentPoint({x: x, y: y});
+            setSteps(pointInsidePolygon(sorted, {x: x, y: -y, index: points.length}));
+        }
     }
     
     const closePolygon = () => {            
         setBuilding(false)
+        setSorted(process(points));
     }
 
     const undo = (e) => {
@@ -61,11 +67,7 @@ function Draw() {
     }
 
     return (
-        <div onClick={createPoint} onKeyDown = {undo} tabIndex = {-1} className="relative w-full h-screen select-none bg-stone-400">
-            {building ? null : 
-                <p className = "text-black text-center text-xl p-2 bg-white">{countDiagonals(points) + " triangulations"}</p>
-            }
-
+        <div onClick={createPoint} onKeyDown = {undo} tabIndex = {-1} className="relative w-full h-screen select-none bg-sky-200">
             {points.map((point, i) => 
             <Point 
                 id = {i} 

@@ -1,24 +1,148 @@
 
-export const pointInside = (points, point) => {
+export const process = (points) => {
     let vertices = points.map((p) => {
         return {
             x: p.x,
-            y: -p.y  //invert y since the origin is the top left for html, we want origin at bottom left
+            y: -p.y,  //invert y since the origin is the top left for html, we want origin at bottom left
+            index: p.index
         };
     });
 
-    console.log(vertices)
     //if the area is negative, the points are in clockwise order, so reverse them
     if (areaPolygon(vertices) < 0)
         vertices.reverse();
   
-    //tabulate diagonals. 0 and vertices.length - 1 are swapped since we need the range, but we also need the correct direction
-    return point_inside_polygon(vertices, point);
+
+    //find top and bottom vertices
+    let min = 0;
+    let max = 0;
+    for (let i = 1; i < vertices.length; i++)  {
+        if (vertices[i].y < vertices[min].y)
+            min = i;
+
+        if (vertices[i].y > vertices[max].y)
+            max = i;
+    }
+    
+    //"extract" the left and right chains of the polygon
+    //O(n) time
+
+    let ptr = (min - 1 + vertices.length) % vertices.length; //goes left in the array
+    
+    let left = [vertices[min]];
+    while (ptr !== max) {
+        left.push(vertices[ptr]);
+        ptr = (ptr - 1 + vertices.length) % vertices.length;
+    }
+    
+    
+    ptr = (min + 1) % vertices.length; //goes right in the array
+    let right = [vertices[min]];
+    while (ptr !== max) {
+        right.push(vertices[ptr]);
+        ptr = (ptr + 1) % vertices.length;
+    }
+
+    left.push(vertices[max]);
+    right.push(vertices[max]);
+
+    return [left, right];
 }
 
-const point_inside_polygon = (vertices, point) => {
+export const pointInsidePolygon = (LR, point) => {
+    let steps = [];
+    let [left, right] = LR
+
+    //if above or below the polygon, return false
+    let lower = Math.min(left[0].y, right[0].y);
+    if (point.y < lower) {
+        steps.push({type: "Below Min", lower: lower});
+        steps.push({result: false});
+        return steps;
+    }
+
+    let higher = Math.max(left[left.length - 1].y, right[right.length - 1].y)
+    if (point.y > higher) {
+        steps.push({type: "Above Max", higher: higher});
+        steps.push({result: false});
+        return steps;
+    }
+
+
+    //binary search to find two indices that the point is between
+    let min = 0;
+    let max = left.length - 1;
+    while (min < max) {
+        let mid = Math.floor((min + max) / 2);
+
+        steps.push({type: "Binary Search", min: left[min].index, max: left[max].index});
+
+        if (point.y == left[mid].y) {
+            min = mid;
+            max = mid;
+            break;
+        }
+
+        if (max - min === 1) {
+            break;
+        }
+
+        if (left[mid].y < point.y)
+            min = mid;
+        else
+            max = mid;
+    }
+    steps.push({type: "Between Left", min: left[max].index, max: left[min].index});
+
+     //check with 2 left test
+     if (leftOn(left[max], left[min], point)) {
+        steps.push({type: "Left On", a: left[max].index, b: left[min].index});
+    } else {
+        steps.push({type: "Left Not On", a: left[max].index, b: left[min].index});
+        steps.push({result: false});
+        return steps;
+    }
+
+    //repeat for right
+
+    min = 0;
+    max = right.length - 1;
+    while (min < max) {
+        let mid = Math.floor((min + max) / 2);
+
+        steps.push({type: "Binary Search", min: right[min].index, max: right[max].index});
+
+        if (point.y == right[mid].y) {
+            min = mid;
+            max = mid;
+            break;
+        }
+
+        if (max - min === 1) {
+            break;
+        }
+
+        if (right[mid].y < point.y)
+            min = mid;
+        else
+            max = mid;
+    }
+    steps.push({type: "Between Right", min: right[max].index, max: right[min].index});
+
+
     
+    if (leftOn(right[min], right[max], point)) {
+        steps.push({type: "Left On", a: right[min].index, b: right[max].index});
+    } else {
+        steps.push({type: "Left Not On", a: right[min].index, b: right[max].index});
+        steps.push({result: false});
+        return steps;
+    }
+
+    steps.push({result: true});
+    return steps;
 }
+
 
 
 
