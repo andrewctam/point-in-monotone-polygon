@@ -69,7 +69,7 @@ function Draw() {
         
         switch (step.type) {
             case "MinMax":
-                return `Find the min and max x values of the vertices, which are vertices ${step.min} and ${step.max}.`;
+                return `From preprocessing, we have the min and max x values of the vertices, which are vertices ${step.min} and ${step.max}.`;
             case "SearchTop":
                 return "Along the top chain, do binary search to find the 2 vertices that the point is between.";
             case "SearchBottom":
