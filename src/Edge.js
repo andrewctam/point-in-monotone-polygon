@@ -12,7 +12,7 @@ const Edge = (props) => {
         top = props.y2 + "px";
     }
 
-    return <div onClick = {() => {}} className = {"h-1 z-0 bg-black absolute origin-top-left"} 
+    return <div onClick = {(e) => {e.stopPropagation();}} className = {"h-1 z-0 bg-black absolute origin-top-left"} 
         style = {{
             width: distance + "px",
             left: left,
@@ -20,8 +20,6 @@ const Edge = (props) => {
             transform: `rotate(${angle}deg)`,
             backgroundColor: props.color
         }} />
-    
-
 
 
 

@@ -8,12 +8,7 @@ const VerticalLine = (props) => {
             top: 0,
             height: "200vh"
         }} />
-    
-
-
-
 
 }
-
 
 export default VerticalLine;

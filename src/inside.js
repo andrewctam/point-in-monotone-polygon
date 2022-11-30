@@ -1,5 +1,5 @@
 
-export const process = (points) => {
+export const preprocess = (points) => {
     let vertices = points.map((p) => {
         return {
             x: p.x,
@@ -30,10 +30,7 @@ export const process = (points) => {
     if (!verifyXMonotone(vertices, min, max)) {
         return [[], [], false];
     }
-    //"extract" the top and bottom chains of the polygon
-    //from leftmost point
-    //O(n) time
-
+    //"extract" the top and bottom chains of the polygon in linear time
     let ptr = (min - 1 + vertices.length) % vertices.length; //goes left in the array
     
     let top = [vertices[min]];
@@ -57,6 +54,7 @@ export const process = (points) => {
 }
 
 export const pointInsidePolygon = (top, bottom, point) => {
+    //array of steps we follow to the end
     let steps = [];
 
     //get the min of the x values from the two arrays
@@ -80,13 +78,13 @@ export const pointInsidePolygon = (top, bottom, point) => {
     steps.push({type: "MinMax", min: lowerIndex, max: higherIndex});
     //if left or right of the polygon, return false
     if (point.x < lower) {
-        steps.push({type: "Below Min", lower: lowerIndex});
+        steps.push({type: "Left Min", lower: lowerIndex});
         steps.push({type: "result", result: false});
         return steps;
     }
 
     if (point.x > higher) {    
-        steps.push({type: "Above Max", higher: higherIndex});
+        steps.push({type: "Right Max", higher: higherIndex});
         steps.push({type: "result", result: false});
         return steps;
     }
@@ -118,8 +116,8 @@ export const pointInsidePolygon = (top, bottom, point) => {
     }
     steps.push({type: "Between Left", min: top[max].index, max: top[min].index});
 
-     //check with left test
-     if (leftOn(top[max], top[min], point)) {
+    //check with left test
+    if (leftOn(top[max], top[min], point)) {
         steps.push({type: "Left On", a: top[max].index, b: top[min].index});
     } else {
         steps.push({type: "Left Not On", a: top[max].index, b: top[min].index});
@@ -162,18 +160,21 @@ export const pointInsidePolygon = (top, bottom, point) => {
         return steps;
     }
 
+
+    //done
     steps.push({type: "result", result: true});
     return steps;
 }
 
 const verifyXMonotone = (vertices, min, max) => {
-
+    //between max to min is the top chain, verify that the x coordinates are decreasing
     for (let i = max; i !== min; i = (i + 1) % vertices.length) {
         if (vertices[i].x < vertices[(i + 1) % vertices.length].x) {
             return false;
         }
     }
 
+    //between min to max is the bottom chain, verify that the x coordinates are increasing
     for (let i = min; i !== max; i = (i + 1) % vertices.length) {
         if (vertices[i].x > vertices[(i + 1) % vertices.length].x) {
             return false;
@@ -189,10 +190,6 @@ const verifyXMonotone = (vertices, min, max) => {
 //below are the predicates from slides
 const area2 = (a, b, c) => {   
     return (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y) ;
-}
-
-const left = (a, b, c) => {
-    return area2(a, b, c) > 0;
 }
 
 const leftOn = (a, b, c) => {

@@ -1,7 +1,7 @@
 import Point from './Point';
 import Edge from './Edge';
 import { useState, useEffect } from "react";
-import { process, pointInsidePolygon } from './inside';
+import { preprocess, pointInsidePolygon } from './inside';
 import VerticalLine from './VerticalLine';
 
 function Draw() {
@@ -40,7 +40,7 @@ function Draw() {
     const closePolygon = () => {            
         setBuilding(false)
 
-        const [T, B, ccw] = process(points);
+        const [T, B, ccw] = preprocess(points);
 
         if (T.length === 0 || B.length === 0) {
             alert("The polygon must be X Monotone.");
@@ -74,11 +74,10 @@ function Draw() {
                 return "Along the top chain, do binary search to find the 2 vertices that the point is between.";
             case "SearchBottom":
                 return "Repeat for the bottom chain.";
-            case "Above Max":
+            case "Right Max":
                 return "Point is right of the maximum x value of the polygon."
-            case "Below Min":
+            case "Left Min":
                 return "Point is left of the minimum x value of the polygon."
-            
             case "Binary Search":
                 return `Binary Search: ${step.min} to ${step.max}`;
             case "Left On":
