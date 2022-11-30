@@ -2,6 +2,7 @@ import Point from './Point';
 import Edge from './Edge';
 import { useState, useEffect } from "react";
 import { process, pointInsidePolygon } from './inside';
+import VerticalLine from './VerticalLine';
 
 function Draw() {
     const [points, setPoints] = useState([]);
@@ -9,7 +10,10 @@ function Draw() {
     const [currentPoint, setCurrentPoint] = useState(null);
 
     const [building, setBuilding] = useState(true);
-    const [sorted, setSorted] = useState([]);
+
+    const [top, setTop] = useState([]);
+    const [bottom, setBottom] = useState([]);
+    const [ccw, setCCW] = useState(true);
 
     const [steps, setSteps] = useState([]);
 
@@ -29,13 +33,24 @@ function Draw() {
             setPoints([...points, {x: x, y: y, index: points.length}]);
         else {
             setCurrentPoint({x: x, y: y});
-            setSteps(pointInsidePolygon(sorted, {x: x, y: -y, index: points.length}));
+            setSteps(pointInsidePolygon(top, bottom, {x: x, y: -y, index: points.length}));
         }
     }
     
     const closePolygon = () => {            
         setBuilding(false)
-        setSorted(process(points));
+
+        const [T, B, ccw] = process(points);
+
+        if (T.length === 0 || B.length === 0) {
+            alert("The polygon must be X Monotone.");
+            setBuilding(true);
+            return;
+        }
+
+        setTop(T);
+        setBottom(B);
+        setCCW(ccw);
     }
 
     const undo = (e) => {
@@ -51,12 +66,12 @@ function Draw() {
     }
 
     const formatStep = (step) => {
-        debugger;
+        
         switch (step.type) {
             case "MinMax":
-                return `Find the min and max x values of the polygon, which are vertices ${step.min} and ${step.max}.`;
+                return `Find the min and max x values of the vertices, which are vertices ${step.min} and ${step.max}.`;
             case "SearchTop":
-                return "Along the top chain, do binary search to find the edge that the point is between.";
+                return "Along the top chain, do binary search to find the 2 vertices that the point is between.";
             case "SearchBottom":
                 return "Repeat for the bottom chain.";
             case "Above Max":
@@ -95,11 +110,10 @@ function Draw() {
             switch(step.type) {
                 case "Left On":
                 case "Left Not On":
-                    if (step.a === i)
+                    if ((!ccw && step.a - 1 === i) || (ccw && step.a === i))
                         color = "red"
                     break;               
             }
-            
 
         edges.push (
             <Edge
@@ -109,7 +123,8 @@ function Draw() {
                 x1 = {points[i].x + 8}
                 x2 = {points[i + 1].x + 8}
                 y1 = {points[i].y + 8}
-                y2 = {points[i + 1].y + 8} />
+                y2 = {points[i + 1].y + 8} 
+                />
         )
 
     }
@@ -120,7 +135,8 @@ function Draw() {
             switch(step.type) {
                 case "Left On":
                 case "Left Not On":
-                    if (step.a === points.length - 1)
+                    const i = points.length - 1;
+                    if ((!ccw && step.a - 1 === i) || (ccw && step.a === i))
                         color = "red"
                     break;               
             }
@@ -142,23 +158,22 @@ function Draw() {
 
     
     return (
+        <>
+        {currentStep < steps.length ? 
+            <p className = "text-black text-center text-xl p-2 z-10 bg-slate-200/50 rounded fixed bottom-0">{formatStep(step)}</p> : null}
+
+        {steps.length > 0 ? 
+            <div className = {"fixed top-0 z-10"}>
+                <button disabled = {currentStep <= 0} className = "p-2 m-2 border border-black disabled:bg-gray-100 bg-red-200 rounded" onClick = {(e) => {e.stopPropagation(); setCurrentStep(currentStep - 1)}}>
+                    Previous Step
+                </button>
+
+                <button disabled = {currentStep >= steps.length - 1} className = "p-2 m-2 border border-black disabled:bg-gray-100 bg-green-200 rounded" onClick = {(e) => {e.stopPropagation(); setCurrentStep(currentStep + 1)}}>
+                    Next Step
+                </button> 
+            </div> : null}
+
         <div onClick={createPoint} onKeyDown = {undo} tabIndex = {-1} className="relative w-full h-[200vh] select-none bg-sky-200">
-
-            {steps.length > 0 ? 
-                <>
-                    {currentStep < steps.length ? 
-                    <p className = "text-black text-center text-xl p-2 bg-white">{formatStep(step)}</p> : null}
-
-                    <button disabled = {currentStep <= 0} className = "p-2 m-2 border border-black disabled:bg-gray-100 bg-red-200 rounded" onClick = {(e) => {e.stopPropagation(); setCurrentStep(currentStep - 1)}}>
-                        Previous Step
-                    </button>
-
-                    <button disabled = {currentStep >= steps.length - 1} className = "p-2 m-2 border border-black disabled:bg-gray-100 bg-green-200 rounded" onClick = {(e) => {e.stopPropagation(); setCurrentStep(currentStep + 1)}}>
-                        Next Step
-                    </button> 
-                </>
-            : null}
-
             {points.map((point, i) =>  {
                 let color = "black"
                 
@@ -180,15 +195,14 @@ function Draw() {
                                 color = "red"
                             break;
                     }
-                    
-
 
                 return <Point 
                     id = {i} 
                     key = {"vertex" + i} 
                     color = {color}
                     x = {point.x}
-                    y = {point.y} 
+                    y = {point.y}
+                    vertex = {true}
                     building = {building}
                     closePolygon = {closePolygon}/>
                 }
@@ -197,20 +211,27 @@ function Draw() {
 
             {currentPoint ?
                 <Point 
-                id = {"p"}
-                key = {"current"}
-                color = {"blue"}
-                x = {currentPoint.x}
-                y = {currentPoint.y}
-                building = {building}
-                closePolygon = {() => {}}/> : null  
+                    id = {""}
+                    key = {"current"}
+                    color = {"blue"}
+                    x = {currentPoint.x}
+                    y = {currentPoint.y}
+                    building = {false}
+                    vertex = {false}
+                    closePolygon = {() => {}}/> 
+                : null  
             }
 
             {edges}
 
+
+            {currentPoint ? 
+            points.map((point) => 
+                <VerticalLine x = {point.x} />
+            ) : null}
+
         </div>
-    );
-  
+    </>);
     
 }
 

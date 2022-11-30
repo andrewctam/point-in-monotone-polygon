@@ -8,9 +8,12 @@ export const process = (points) => {
         };
     });
 
+    let ccw = true;
     //if the area is negative, the points are in clockwise order, so reverse them
-    if (areaPolygon(vertices) < 0)
+    if (areaPolygon(vertices) < 0) {
         vertices.reverse();
+        ccw = false;
+    }
   
 
     //find left and rightmost vertices
@@ -24,7 +27,11 @@ export const process = (points) => {
             max = i;
     }
     
+    if (!verifyXMonotone(vertices, min, max)) {
+        return [[], [], false];
+    }
     //"extract" the top and bottom chains of the polygon
+    //from leftmost point
     //O(n) time
 
     let ptr = (min - 1 + vertices.length) % vertices.length; //goes left in the array
@@ -46,33 +53,32 @@ export const process = (points) => {
     top.push(vertices[max]);
     bottom.push(vertices[max]);
 
-    return [top, bottom];
+    return [top, bottom, ccw];
 }
 
-export const pointInsidePolygon = (topBot, point) => {
+export const pointInsidePolygon = (top, bottom, point) => {
     let steps = [];
-    let [top, bottom] = topBot
 
-    //if left or right of the polygon, return false
+    //get the min of the x values from the two arrays
     if (top[0].x < bottom[0].x) {
         var lower = top[0].x;
-        var lowerIndex = top[0].x < bottom[0].x ? top[0].index : bottom[0].index;
+        var lowerIndex = top[0].index
     } else {
         lower = bottom[0].x;
-        lowerIndex = top[0].x < bottom[0].x ? top[0].index : bottom[0].index;
+        lowerIndex = bottom[0].index;
     }
 
-
+    //get the max of the x values
     if (top[top.length - 1].x > bottom[bottom.length - 1].x) {
         var higher = top[top.length - 1].x;
-        var higherIndex = top[top.length - 1].x > bottom[bottom.length - 1].x ? top[top.length - 1].index : bottom[bottom.length - 1].index;
+        var higherIndex = top[top.length - 1].index 
     } else  {
         higher = bottom[bottom.length - 1].x;
-        higherIndex = top[top.length - 1].x > bottom[bottom.length - 1].x ? top[top.length - 1].index : bottom[bottom.length - 1].index;
+        higherIndex = bottom[bottom.length - 1].index;
     }
 
     steps.push({type: "MinMax", min: lowerIndex, max: higherIndex});
-
+    //if left or right of the polygon, return false
     if (point.x < lower) {
         steps.push({type: "Below Min", lower: lowerIndex});
         steps.push({type: "result", result: false});
@@ -85,8 +91,8 @@ export const pointInsidePolygon = (topBot, point) => {
         return steps;
     }
 
-    steps.push({type: "SearchTop"});
 
+    steps.push({type: "SearchTop"});
     //binary search to find two indices that the point is between
     let min = 0;
     let max = top.length - 1;
@@ -95,7 +101,7 @@ export const pointInsidePolygon = (topBot, point) => {
 
         steps.push({type: "Binary Search", min: top[min].index, max: top[max].index});
 
-        if (point.x == top[mid].x) {
+        if (point.x === top[mid].x) {
             min = mid;
             max = mid;
             break;
@@ -112,7 +118,7 @@ export const pointInsidePolygon = (topBot, point) => {
     }
     steps.push({type: "Between Left", min: top[max].index, max: top[min].index});
 
-     //check with 2 left test
+     //check with left test
      if (leftOn(top[max], top[min], point)) {
         steps.push({type: "Left On", a: top[max].index, b: top[min].index});
     } else {
@@ -130,7 +136,7 @@ export const pointInsidePolygon = (topBot, point) => {
 
         steps.push({type: "Binary Search", min: bottom[min].index, max: bottom[max].index});
 
-        if (point.x == bottom[mid].x) {
+        if (point.x === bottom[mid].x) {
             min = mid;
             max = mid;
             break;
@@ -160,6 +166,23 @@ export const pointInsidePolygon = (topBot, point) => {
     return steps;
 }
 
+const verifyXMonotone = (vertices, min, max) => {
+
+    for (let i = max; i !== min; i = (i + 1) % vertices.length) {
+        if (vertices[i].x < vertices[(i + 1) % vertices.length].x) {
+            return false;
+        }
+    }
+
+    for (let i = min; i !== max; i = (i + 1) % vertices.length) {
+        if (vertices[i].x > vertices[(i + 1) % vertices.length].x) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 
 
 
@@ -167,6 +190,7 @@ export const pointInsidePolygon = (topBot, point) => {
 const area2 = (a, b, c) => {   
     return (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y) ;
 }
+
 const left = (a, b, c) => {
     return area2(a, b, c) > 0;
 }
